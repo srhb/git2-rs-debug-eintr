@@ -23,8 +23,13 @@
         my-crate = craneLib.buildPackage {
           src = craneLib.cleanCargoSource ./.;
 
+          nativeBuildInputs = [
+            pkgs.pkg-config
+          ];
+
           buildInputs = [
             # Add additional build inputs here
+            pkgs.openssl
           ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
             # Additional darwin specific inputs can be set here
             pkgs.libiconv
@@ -43,12 +48,14 @@
         };
 
         devShells.default = pkgs.mkShell {
-          inputsFrom = builtins.attrValues self.checks;
+          inputsFrom = [ my-crate ];
 
           # Extra inputs can be added here
           nativeBuildInputs = with pkgs; [
             cargo
             rustc
+
+            rust-analyzer
           ];
         };
       });
