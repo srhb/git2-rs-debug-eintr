@@ -57,7 +57,45 @@ fn run(args: &Args, dir: &Path) -> Result<(), git2::Error> {
 fn main() {
     let args = Args::from_args();
 
-    let process = thread::spawn(move || {
+    /*
+    Comment `let process ...` out to have git2 work just fine.
+
+    With it, you'll get lots of errors a la:
+
+    ```
+    error: Failed to retrieve list of SSH authentication methods: Error waiting on socket; class=Ssh (23); code=Auth (-16)
+    error: SSH could not read data: Error waiting on socket; class=Ssh (23)
+    error: Failed to open SSH channel: Error waiting on socket; class=Ssh (23)
+    ```
+
+    (They key error here is: "Error waiting on socket")
+
+    I believe what's happening is this:
+
+    async-process (Command::new()) works internally by dealing with SIGCHLD etc.
+    for process reaping. In other words, _this_ process starts receiving a bunch
+    of SIGCHLD signals.
+
+    This causes the following `poll()` (or `select()`, depending on
+    implementation)
+
+    https://github.com/libssh2/libssh2/blob/master/src/session.c#L645
+
+    ... to return with errno EINTR on each signal received:
+
+    https://github.com/libssh2/libssh2/blob/master/src/session.c#L678
+
+    ... which is the error that ultimately surfaces in git2-rs.
+
+    The question then is: How does one even use git2-rs from within a process
+    that receives signals periodically? If we simply mask it out, whomever
+    depends on the signal gets broken. If not, we'll have to deal with the error
+    all the way up here, even though we should really have been able to simply
+    restart a simple poll on eg. a recv() on socket. Any help or thoughts
+    appreciated!
+    */
+
+    let _process = thread::spawn(move || {
         loop {
             Command::new("true")
                 .stdout(Stdio::piped())
