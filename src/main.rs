@@ -57,12 +57,11 @@ fn run(args: &Args, dir: &Path) -> Result<(), git2::Error> {
 fn main() {
     let args = Args::from_args();
 
-    thread::spawn(move || {
+    let process = thread::spawn(move || {
         loop {
             Command::new("true")
                 .stdout(Stdio::piped())
                 .spawn().expect("Failed to spawn true");
-            thread::sleep(time::Duration::from_millis(10));
         }
     });
 
@@ -70,7 +69,7 @@ fn main() {
         for _i in 1..100 {
             let tmp_dir = TempDir::new("git2-rs-eintr-clone").expect("Could not create tmp_dir");
             match run(&args, tmp_dir.path()) {
-                Ok(()) => {}
+                Ok(()) => println!("Cloned succesfully!"),
                 Err(e) => println!("error: {}", e),
             }
             tmp_dir.close().expect("Woops, couldn't get rid of dir");
